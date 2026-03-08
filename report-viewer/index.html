@@ -4,10 +4,12 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>BD Reviewer Dashboard</title>
+
   <link rel="stylesheet" href="assets/styles.css" />
   <link rel="stylesheet" href="assets/theme.default.css" />
   <link rel="stylesheet" href="assets/print.css" media="print" />
 </head>
+
 <body>
 <header class="topbar">
   <div class="brand">
@@ -17,6 +19,7 @@
       <div class="brand-subtitle">Indication & Asset Reader</div>
     </div>
   </div>
+
   <div class="top-actions">
     <button class="btn" id="btnPrintPdf" title="Print to clean PDF for executives">Print PDF</button>
     <button class="btn btn-primary" id="btnExportHtml" title="Download a static HTML snapshot">Export HTML</button>
@@ -26,27 +29,45 @@
 <main class="layout">
   <aside class="panel">
     <h2>Library</h2>
+    
     <div class="stack">
-      <label class="label">Upload JSON files</label>
+      <label class="label">1. Upload JSON files</label>
       <input type="file" id="fileInput" accept=".json,application/json" multiple />
     </div>
-    <hr class="sep" />
-    
-    <h2>View Context</h2>
-    <div class="stack">
-      <label class="label">Target Indication</label>
-      <select id="indicationSelect" class="select"><option value="">-- None --</option></select>
-    </div>
-    <div class="stack" style="margin-top:10px;">
-      <label class="label">Candidate Asset</label>
-      <select id="assetSelect" class="select"><option value="">-- None --</option></select>
+
+    <div class="stack" style="margin-top:15px;">
+      <label class="label">2. Or Paste AI-Generated JSON</label>
+      <textarea id="jsonPasteBox" class="input" rows="4" placeholder="Paste raw JSON here..." style="resize: vertical; font-family: monospace; font-size: 11px;"></textarea>
+      <button class="btn btn-primary" id="btnProcessPaste" title="Load into dashboard and download as a .json file">Load & Download JSON</button>
     </div>
 
     <hr class="sep" />
+
+    <h2>View Context</h2>
+    <div class="stack">
+      <label class="label">Target Indication</label>
+      <select id="indicationSelect" class="select">
+        <option value="">-- None --</option>
+      </select>
+    </div>
+    
+    <div class="stack" style="margin-top:10px;">
+      <label class="label">Candidate Asset</label>
+      <select id="assetSelect" class="select">
+        <option value="">-- None --</option>
+      </select>
+    </div>
+
+    <hr class="sep" />
+    
     <h2>Compare Assets</h2>
     <div class="stack">
-      <select id="compareLeft" class="select"><option value="">-- Select Asset A --</option></select>
-      <select id="compareRight" class="select"><option value="">-- Select Asset B --</option></select>
+      <select id="compareLeft" class="select">
+        <option value="">-- Select Asset A --</option>
+      </select>
+      <select id="compareRight" class="select">
+        <option value="">-- Select Asset B --</option>
+      </select>
       <button class="btn btn-primary" id="btnCompare">Compare</button>
     </div>
 
@@ -63,8 +84,12 @@
       <button class="tab" data-tab="raw_indication">Raw Indication</button>
       <button class="tab" data-tab="raw_asset">Raw Asset</button>
     </div>
+
     <div id="contentRoot">
-      <div class="empty"><h3>No report loaded</h3><p>Upload JSON files to begin analysis.</p></div>
+      <div class="empty">
+        <h3>No report loaded</h3>
+        <p>Upload JSON files or paste AI-generated code to begin analysis.</p>
+      </div>
     </div>
   </section>
 </main>
