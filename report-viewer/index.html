@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>BD Reviewer Dashboard</title>
+  <link rel="stylesheet" href="assets/styles.css" />
+  <link rel="stylesheet" href="assets/theme.default.css" />
+  <link rel="stylesheet" href="assets/print.css" media="print" />
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <div class="logo-placeholder" style="display:flex; align-items:center; justify-content:center; font-weight:bold; color:var(--accent);">BD</div>
+    <div>
+      <div class="brand-title">Rare Disease Evaluation Dashboard</div>
+      <div class="brand-subtitle">Indication & Asset Reader</div>
+    </div>
+  </div>
+  <div class="top-actions">
+    <button class="btn" id="btnPrintPdf" title="Print to clean PDF for executives">Print PDF</button>
+    <button class="btn btn-primary" id="btnExportHtml" title="Download a static HTML snapshot">Export HTML</button>
+  </div>
+</header>
+
+<main class="layout">
+  <aside class="panel">
+    <h2>Library</h2>
+    <div class="stack">
+      <label class="label">Upload JSON files</label>
+      <input type="file" id="fileInput" accept=".json,application/json" multiple />
+    </div>
+    <hr class="sep" />
+    
+    <h2>View Context</h2>
+    <div class="stack">
+      <label class="label">Target Indication</label>
+      <select id="indicationSelect" class="select"><option value="">-- None --</option></select>
+    </div>
+    <div class="stack" style="margin-top:10px;">
+      <label class="label">Candidate Asset</label>
+      <select id="assetSelect" class="select"><option value="">-- None --</option></select>
+    </div>
+
+    <hr class="sep" />
+    <h2>Compare Assets</h2>
+    <div class="stack">
+      <select id="compareLeft" class="select"><option value="">-- Select Asset A --</option></select>
+      <select id="compareRight" class="select"><option value="">-- Select Asset B --</option></select>
+      <button class="btn btn-primary" id="btnCompare">Compare</button>
+    </div>
+
+    <div class="stack" style="margin-top:20px;">
+      <button class="btn" id="btnClear" style="color:var(--bad); border-color:var(--bad);">Clear All Data (Reset)</button>
+    </div>
+  </aside>
+
+  <section class="viewer">
+    <div class="tabs">
+      <button class="tab active" data-tab="indication">Indication View</button>
+      <button class="tab" data-tab="asset">Asset View</button>
+      <button class="tab" data-tab="compare">Compare Assets</button>
+      <button class="tab" data-tab="raw_indication">Raw Indication</button>
+      <button class="tab" data-tab="raw_asset">Raw Asset</button>
+    </div>
+    <div id="contentRoot">
+      <div class="empty"><h3>No report loaded</h3><p>Upload JSON files to begin analysis.</p></div>
+    </div>
+  </section>
+</main>
+
+<script src="assets/radar.js"></script>
+<script src="assets/diff.js"></script>
+<script src="assets/render.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

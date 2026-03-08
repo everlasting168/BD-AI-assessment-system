@@ -1,0 +1,7 @@
+/* Default theme. Create assets/theme.custom.css to override. */
+
+:root{
+  /* Example: set brand accent and optional fonts */
+  /* --accent: #2563eb; */
+  /* --sans: "Segoe UI", system-ui, -apple-system, sans-serif; */
+}

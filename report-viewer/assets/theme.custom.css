@@ -1,0 +1,12 @@
+:root{
+  --accent: #0b5cab;      /* primary brand color */
+  --panel: #0b1730;
+  --panel2: #0f2142;
+  --sans: "Segoe UI", "Meiryo", system-ui, -apple-system, sans-serif;
+  --radius: 12px;
+}
+
+/* Topbar tweaks */
+.topbar{
+  border-bottom: 2px solid color-mix(in oklab, var(--accent) 60%, var(--border));
+}

@@ -1,0 +1,40 @@
+@media print {
+  :root {
+    --bg: #ffffff; --panel: #ffffff; --panel2: #fcfcfc;
+    --text: #000000; --muted: #333333; --border: #cccccc;
+    --accent: #000000; --shadow: none;
+  }
+
+  body { background: #fff !important; color: #000 !important; font-size: 12pt; }
+  
+  /* 隱藏網頁控制元件 */
+  .topbar, .panel, .tabs { display: none !important; }
+
+  .layout { display: block !important; margin: 0 !important; padding: 0 !important; max-width: none !important; }
+
+  /* 強制不切割核心區塊 */
+  .major-item-frame { 
+    page-break-inside: avoid; 
+    break-inside: avoid; 
+    border: 1px solid #aaa !important; 
+    box-shadow: none !important; 
+    margin-bottom: 25px !important; 
+  }
+  
+  .reviewer-card { 
+    page-break-inside: avoid; 
+    break-inside: avoid; 
+    border: 1px solid #ddd !important; 
+  }
+
+  /* 去除背景色節省墨水 */
+  .badge { border: 1px solid #000 !important; color: #000 !important; background: transparent !important; }
+  
+  .card { box-shadow: none !important; border: 1px solid #ccc !important; }
+  
+  /* 確保圖表可見 */
+  .radar-container { display: block !important; page-break-inside: avoid; break-inside: avoid; }
+  
+  /* 展開連結 */
+  a.ref-link::after { content: " [" attr(href) "]"; font-size: 9pt; color: #555; word-break: break-all; }
+}
