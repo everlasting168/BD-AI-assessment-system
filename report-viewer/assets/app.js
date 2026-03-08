@@ -1,9 +1,11 @@
-/* app.js: Integrated Controller with Persistence & Comparison */
+/* app.js: Integrated Controller with Persistence, Comparison, and Paste Support */
 (function(){
   const state = { indications: [], assets: [], activeIndicationId: null, activeAssetId: null, activeTab: 'indication' };
 
   const els = {
     fileInput: document.getElementById('fileInput'),
+    pasteBox: document.getElementById('jsonPasteBox'),
+    btnPaste: document.getElementById('btnProcessPaste'),
     indSelect: document.getElementById('indicationSelect'),
     assSelect: document.getElementById('assetSelect'),
     compLeft: document.getElementById('compareLeft'),
@@ -33,7 +35,35 @@
     } catch(e) { console.error("Storage err", e); }
   }
 
-  // 2. File Uploading
+  // 2. 核心 JSON 處理邏輯 (供檔案上傳與直接貼上共用)
+  function processParsedJson(json, fallbackName = "Report") {
+    const id = Math.random().toString(16).slice(2);
+    let isIndication = false;
+    let reportName = fallbackName;
+
+    if (json.Indication) {
+      isIndication = true;
+      reportName = json.Indication.Name || fallbackName;
+      state.indications.push({ id, name: reportName, data: json.Indication });
+      state.activeIndicationId = id;
+      if (state.activeTab.startsWith('raw') || state.activeTab === 'compare' || state.activeTab === 'asset') setTab('indication');
+    } else if (json.Asset) {
+      reportName = json.Asset.Name || fallbackName;
+      state.assets.push({ id, name: reportName, data: json.Asset });
+      state.activeAssetId = id;
+      if (state.indications.length === 0 || state.activeTab.startsWith('raw') || state.activeTab === 'compare') setTab('asset');
+    } else {
+      throw new Error("Invalid format: Root node must be 'Indication' or 'Asset'.");
+    }
+
+    saveState(); 
+    refreshSelectors(); 
+    render();
+    
+    return { isIndication, reportName };
+  }
+
+  // 3. File Uploading
   els.fileInput.addEventListener('change', (e) => {
     const files = Array.from(e.target.files);
     files.forEach(file => {
@@ -41,24 +71,44 @@
       reader.onload = (event) => {
         try {
           const json = JSON.parse(event.target.result);
-          const id = Math.random().toString(16).slice(2);
-          if (json.Indication) {
-            state.indications.push({ id, name: json.Indication.Name, data: json.Indication });
-            state.activeIndicationId = id;
-            if (state.activeTab.startsWith('raw') || state.activeTab === 'compare') setTab('indication');
-          } else if (json.Asset) {
-            state.assets.push({ id, name: json.Asset.Name, data: json.Asset });
-            state.activeAssetId = id;
-            if (state.indications.length === 0) setTab('asset');
-          }
-          saveState(); refreshSelectors(); render();
-        } catch (err) { els.contentRoot.innerHTML = `<div style="color:red; padding:20px;">Error: ${err.message}</div>`; }
+          processParsedJson(json, file.name.replace('.json', ''));
+        } catch (err) { els.contentRoot.innerHTML = `<div style="color:red; padding:20px;">Parse Error: ${err.message}</div>`; }
       };
       reader.readAsText(file);
     });
-    e.target.value = '';
+    e.target.value = ''; // Reset input
   });
 
+  // 4. Paste JSON Logic
+  if (els.btnPaste) {
+    els.btnPaste.addEventListener('click', () => {
+      const rawText = els.pasteBox.value.trim();
+      if (!rawText) return alert("Please paste some JSON code first.");
+      
+      try {
+        const json = JSON.parse(rawText);
+        const { reportName } = processParsedJson(json, "AI_Generated_Report");
+
+        // 自動觸發下載成為 .json 檔案
+        const safeFileName = `${reportName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_export.json`;
+        const blob = new Blob([JSON.stringify(json, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = safeFileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        els.pasteBox.value = ''; // 清空輸入框
+      } catch (err) {
+        els.contentRoot.innerHTML = `<div style="color:red; padding:20px;">Paste Error: Invalid JSON Format.<br><br>${err.message}</div>`;
+      }
+    });
+  }
+
+  // 5. UI Updates
   function refreshSelectors() {
     const indOpts = state.indications.map(r => `<option value="${r.id}" ${r.id===state.activeIndicationId?'selected':''}>${r.name}</option>`).join('');
     els.indSelect.innerHTML = indOpts || `<option value="">-- None --</option>`;
@@ -97,6 +147,7 @@
 
   els.btnPrint.addEventListener('click', () => window.print());
 
+  // 6. Main Render Routing
   function render() {
     const activeInd = state.indications.find(r => r.id === state.activeIndicationId);
     const activeAss = state.assets.find(r => r.id === state.activeAssetId);
