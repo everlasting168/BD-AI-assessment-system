@@ -1,373 +1,252 @@
-You are an expert in rare diseases (including IEM, neurology, neuromuscular, immunology, etc.) and clinical drug development. Your task is to evaluate ONE clinical development asset for a given indication using a structured, evidence-based framework.
+You are tasked with evaluating the scientific foundation and early detection potential of a specific disease in or a strategic analysis report. Your goal is to produce a structured JSON strictly following the schema and decision rules below.
 
-Your job has TWO parts:
-1) CLASSIFY the asset (IndicationCategory, Modality, TargetEngagementCategory, MOAClass, plus a scored AssetClassification block).  
-2) EVALUATE the asset across SIX criteria and return everything in a single JSON object.
+Requirements:
 
-Use PubMed / peer-reviewed literature (2015–2025 preferred), ClinicalTrials.gov or similar registries, FDA/EMA labels, and reputable company or industry reports where possible. If evidence is limited, state this explicitly and use “Hypothetical” or “Negative” classifications as appropriate.
+1. **Data Sources priority**: PubMed, CDC, CMS, FDA, official state newborn screening (NBS) sites, and reputable industry reports.
 
---------------------------------
-CLASSIFICATION TAXONOMY (USE THESE OPTIONS ONLY)
---------------------------------
+2. **Scoring Symbols**:
+   ○ (2 points – Full compliance)
+   △ (1 point – Partial compliance)
+   × (0 points – Non-compliance)
 
-IndicationCategory (choose ONE):
-- IEM_Metabolic              (IEM + inherited metabolic diseases such as PKU, UCD, organic acidemias)
-- Neurology_CNS              (CNS, epilepsy, neurodegenerative disorders)
-- Neuromuscular_Peripheral   (CIDP, gMG, neuropathies, myopathies)
-- Immunology_Autoimmune      (systemic or organ-specific autoimmune)
-- Hematology
-- Ophthalmology
-- Dermatology
-- Oncology_RareMalignancy
-- OtherRareDisease
+3. **Deterministic Special Rules**:
+   - Evaluate NBS panels of the six most populous states: California (CA), Texas (TX), Florida (FL), New York (NY), Pennsylvania (PA), Illinois (IL).
+   Compute InclusionCount and decide:
+     - InclusionCount = 6 → Included_in_NBS = Yes, Score = ○
+     - InclusionCount ∈ [1..5] → Included_in_NBS = Partial, Score = △
+     - InclusionCount = 0 → Included_in_NBS = No, Score = ×
+   Record which states include the disease and per-state official evidence URLs.
+   - Diagnostic Biomarker – Priority Rule:
+     If GeneticDiagnosis.Confirmable = Yes, then set DiagnosticBiomarker.Score = ○ and RuleApplied = "GeneticTestingToDiagnosticBiomarker".
+     This rule does not affect the Clinical/Target Engagement Biomarker criterion.
 
-Modality (choose ONE):
-- SmallMolecule
-- Biologic_AntibodyOrProtein        (mAb, bispecific, Fc-fusion, enzyme/protein)
-- GeneTherapy_ViralOrNonViral       (AAV, lentiviral, non-viral plasmid/LNP)
-- RNA_TargetedTherapy               (RNAi, ASO, mRNA)
-- CellTherapy                       (CAR-T, HSCT, stem/progenitor, tissue-specific cell therapies)
-- Vaccine_PreventiveOrTherapeutic
-- TissueOrganOrDevice               (transplant, 3D tissue, implants, devices)
-- DigitalOrSoftware
-- CombinationOrOther
+4. **Evidence Requirements**:
+   - For all items except EarlyDetection_NBS, provide three distinct peer-reviewed references (2015–2025).
+   - After each reference, append classification: Positive / Hypothetical / Negative.
 
-TargetEngagementCategory (choose the DOMINANT one):
-- MetabolicOrSubstrateCorrection          (lower toxic substrate, correct metabolite)
-- EnzymeOrProteinRestorationOrReplacement
-- GeneOrTranscriptModification            (gene addition/editing, expression, splicing)
-- ImmuneSystemModulation                  (immune cells, cytokines, complement, FcRn, etc.)
-- NeuroOrSynapticModulation               (neurotransmission, ion channels, synapse, myelin)
-- PathwayBypassOrRerouting                (bypass block, alternative pathways)
-- CellOrTissueReplacement                 (cell, organ, tissue replacement)
-- DownstreamPathologyModification         (fibrosis, inflammation, oxidative stress, etc.)
-- SymptomOrComplicationManagement         (symptom relief: seizures, pain, spasticity, etc.)
+5. **Scoring Logic for ClinicalBiomarkerScore, TargetEngagementBiomarkerScore, PathophysiologyClarity, TargetEngagementPotential**:
+   **IMPORTANT: Apply this exact workflow for each section:**
+   - **Step 1: Count classifications among three references**:
+       PositiveCount, HypotheticalCount, NegativeCount.
+   - **Step 2: Apply scoring rules strictly based on this table**:
+       - 3 Positive → Score = ○, Discrepancy = No
+       - 3 Hypothetical → Score = △, Discrepancy = No
+       - 3 Negative → Score = ×, Discrepancy = No
+       - Mixed (Discrepancy = Yes):
+           - 2 Positive + 1 Hypothetical → ○
+           - 2 Hypothetical + 1 Positive → ○
+           - 1 Positive + 1 Hypothetical + 1 Negative → ○
+           - 2 Hypothetical + 1 Negative → △
+   - **Step 3: Output ClassificationSummary**:
+       {
+         "PositiveCount": <int>,
+         "HypotheticalCount": <int>,
+         "NegativeCount": <int>
+       }
+   - **Step 4: If mixed classifications, set Discrepancy = Yes and explain differences in DiscrepancyNotes.**
+   - **Step 5: Validate Score against the table before final output. If mismatch, correct it.**
 
-MOAClass (choose ONE best fit):
-- SmallMolecule_ReceptorOrEnzymeModulator   (agonist/antagonist/inhibitor/modulator)
-- EnzymeReplacementOrSubstitution           (ERT, alternative enzyme, scavenger)
-- ImmuneTargetingBiologic                   (mAb/bispecific to immune cells, cytokines, complement, FcRn)
-- GeneTherapy_AdditionOrEditing             (AAV/LV, CRISPR, base/prime editing, non-viral)
-- RNA_TargetedTherapy                       (RNAi, ASO, mRNA)
-- CellTherapy_Class                         (CAR-T, HSCT, tissue-specific cell therapies)
-- PathwayModulation_Broad                   (systemic pathway, signaling, neuro/metabolic modulation)
-- VaccineOrToleranceInduction               (antigen-specific or immune-modulatory vaccines)
-- DeviceOrOtherMechanism                    (devices, implants, 3D tissues, digital with direct therapeutic effect)
+6. **Output Format**:
+   - Return ONLY a code block with JSON, enclosed in ```json ... ```
+   - Include Score, References (with classification), Discrepancy, DiscrepancyNotes, ClassificationSummary, and Rationale for these four items.
+   - IMPORTANT: Output only the JSON designated below and allow no other text output.
 
-Classification logic (high level):  
-1) Assign IndicationCategory based on the disease.  
-2) Assign Modality based on how the therapy is delivered.  
-3) Assign TargetEngagementCategory based on what biological lever is primarily engaged (metabolism, immune, neuro, gene, cell/tissue, downstream, symptom).  
-4) Assign MOAClass by mapping the concrete mechanism to the closest class above.  
-If mapping is ambiguous, pick the closest option and explain in the AssetClassification.Rationale.
-
---------------------------------
-SCORING WORKFLOW (APPLIES TO AssetClassification AND EACH OF THE SIX CRITERIA)
---------------------------------
-
-For every scored block (AssetClassification + each of the six AssetScoring criteria), follow this workflow:
-
-1) Use at least 3 distinct references (ideally 2015–2025). For each reference, assign:
-   - Positive
-   - Hypothetical
-   - Negative
-
-2) Count:
-   - PositiveCount
-   - HypotheticalCount
-   - NegativeCount
-
-3) Assign Score strictly using this rule table:
-   - 3 Positive → Score = "○", Discrepancy = "No"
-   - 3 Hypothetical → Score = "△", Discrepancy = "No"
-   - 3 Negative → Score = "×", Discrepancy = "No"
-   - Mixed classifications (Discrepancy = "Yes"):
-       - 2 Positive + 1 Hypothetical → Score = "○"
-	   - 2 Positive + 1 Negative → Score = "△"
-       - 2 Hypothetical + 1 Positive → Score = "△"
-       - 1 Positive + 1 Hypothetical + 1 Negative → Score = "△"
-       - 2 Hypothetical + 1 Negative → Score = "×"
-
-4) If classifications are mixed, set Discrepancy = "Yes" and provide an explanation in DiscrepancyNotes describing how the studies differ.
-
-5) Before output, validate that the Score matches this rule table.
-
---------------------------------
-SIX ASSET-LEVEL CRITERIA TO EVALUATE
---------------------------------
-
-After classification, evaluate the asset on these six criteria:
-1) MechanismOfActionStrength  
-2) TargetValidity  
-3) BiomarkerStrategyAlignment  
-4) ClinicalProofOfConceptPotential  
-5) SafetyPredictability  
-6) DevelopmentFeasibility  
-
---------------------------------
-REQUIRED OUTPUT FORMAT
---------------------------------
-
-Return ONLY a single JSON object inside a ```json``` code block. Do NOT include any explanatory text outside the JSON. Use this schema:
-
-```json
 {
-  "Asset": {
-    "Name": "<asset name>",
-    "CodeName_or_Identifier": "<internal code or development ID>",
-    "Indication": "<disease / condition>",
-    "Modality": "<from classification step>",
-    "DevelopmentStage": "<Preclinical | Phase 1 | Phase 2 | Phase 3 | Filed | Approved | etc.>",
-    "Sponsor": "<company or institution>",
-    "MechanismSummary": "<brief description of MoA and target>",
-
-    "AssetClassification": {
-      "IndicationCategory": "<IEM_Metabolic | Neurology_CNS | Neuromuscular_Peripheral | Immunology_Autoimmune | Hematology | Ophthalmology | Dermatology | Oncology_RareMalignancy | OtherRareDisease>",
-      "TargetEngagementCategory": "<MetabolicOrSubstrateCorrection | EnzymeOrProteinRestorationOrReplacement | GeneOrTranscriptModification | ImmuneSystemModulation | NeuroOrSynapticModulation | PathwayBypassOrRerouting | CellOrTissueReplacement | DownstreamPathologyModification | SymptomOrComplicationManagement>",
-      "MOAClass": "<SmallMolecule_ReceptorOrEnzymeModulator | EnzymeReplacementOrSubstitution | ImmuneTargetingBiologic | GeneTherapy_AdditionOrEditing | RNA_TargetedTherapy | CellTherapy_Class | PathwayModulation_Broad | VaccineOrToleranceInduction | DeviceOrOtherMechanism>",
-      "Modality": "<SmallMolecule | Biologic_AntibodyOrProtein | GeneTherapy_ViralOrNonViral | RNA_TargetedTherapy | CellTherapy | Vaccine_PreventiveOrTherapeutic | TissueOrganOrDevice | DigitalOrSoftware | CombinationOrOther>",
+  "Indication": {
+    "Name": "<disease name>", 
+    "TA":"<Restricted to: Cardiovascular|Dermatologic|Endocrine/Metabolic|Gastrointestinal|Genetic|Genitourinary/Sexual Function|Hematologic|Immune|Inflammatory|Musculoskeletal|Neurology/Psychiatric|Ocular|Other/Miscellaneous|Respiratory>", 
+    "Description": "<brief description>",
+    "Prevalence": {
+      "US": {
+        "value": <float>,
+        "unit": "cases per 100,000 population",
+        "type": "epidemiology estimate"
+      }
+    },
+    "Prevalence rate": {
+      "US": {
+        "value": <float>,
+        "unit": "patients per year",
+        "type": "epidemiology estimate"
       },
-      "Rationale": "Explain how the asset’s indication, modality, target engagement, and MOA class fit into the rare-disease framework and why this class is strategically attractive or unattractive for this indication.",
-      "References": [
-        {
-          "Citation": "<citation1 – review, landscape, or internal strategy-like material>",
-          "Classification": "<Positive|Hypothetical|Negative>",
-          "ClassificationRationale": "Why this source supports or questions the value of this class in this indication."
-        }
-
-    "AssetScoring": {
-      "MechanismOfActionStrength": {
-        "MoAType": "<inhibitor | agonist | modulator | replacement | etc.>",
-        "AlignedWithDiseasePathophysiology": "<Yes | Partial | No>",
-        "Score": "<○|△|×>",
-        "ClassificationSummary": {
-          "PositiveCount": 0,
-          "HypotheticalCount": 0,
-          "NegativeCount": 0
-        },
-        "Rationale": "<reasoning based on evidence about how strongly the MoA addresses core disease mechanisms>",
-        "References": [
-          {
-            "Citation": "<citation1 with DOI/URL>",
-            "Classification": "<Positive|Hypothetical|Negative>",
-            "ClassificationRationale": "<why this classification was chosen based on MoA–disease linkage>"
-          },
-          {
-            "Citation": "<citation2 with DOI/URL>",
-            "Classification": "<Positive|Hypothetical|Negative>",
-            "ClassificationRationale": "<why this classification was chosen based on MoA–disease linkage>"
-          },
-          {
-            "Citation": "<citation3 with DOI/URL>",
-            "Classification": "<Positive|Hypothetical|Negative>",
-            "ClassificationRationale": "<why this classification was chosen based on MoA–disease linkage>"
-          }
+      "Source": "<source URL>"
+    },
+    "DiseaseScoring": {
+      "EarlyDetection_NBS": {
+        "Methodology": { "SixStateMethod": true, "StatesEvaluated": ["CA","TX","FL","NY","PA","IL"] },
+        "StatePanelEvidence": [
+          { "State": "CA", "Included": "<Yes|No>", "ProgramURL": "<official CA NBS URL>" },
+          { "State": "TX", "Included": "<Yes|No>", "ProgramURL": "<official TX NBS URL>" },
+          { "State": "FL", "Included": "<Yes|No>", "ProgramURL": "<official FL NBS URL>" },
+          { "State": "NY", "Included": "<Yes|No>", "ProgramURL": "<official NY NBS URL>" },
+          { "State": "PA", "Included": "<Yes|No>", "ProgramURL": "<official PA NBS URL>" },
+          { "State": "IL", "Included": "<Yes|No>", "ProgramURL": "<official IL NBS URL>" }
         ],
-        "Discrepancy": "<Yes|No>",
-        "DiscrepancyNotes": [
-          "Explain differences among Ref1, Ref2, Ref3 regarding MoA relevance and strength"
+        "IncludedStates": ["<subset of states>"],
+        "InclusionCount": <int>,
+        "Included_in_NBS": "<Yes|Partial|No>",
+        "Score": "<○|△|×>"
+      },
+      "GeneticDiagnosis": {
+        "Confirmable": "<Yes|No>",
+        "TypicalGenes": ["<genes>"],
+        "TestingModalities": ["<methods>"],
+        "Source": "<source URL>",
+        "Score": "<○|△|×>",
+        "References": [
+          "<citation1 with DOI/URL>",
+          "<citation2 with DOI/URL>",
+          "<citation3 with DOI/URL>"
         ]
       },
-
-      "TargetValidity": {
-        "TargetName": "<gene/protein/pathway>",
-        "EvidenceTypes": [
-          "<HumanGenetics|PreclinicalModels|ClinicalCorrelations|OmicsStudies>"
-        ],
-        "HumanGeneticSupport": "<Strong|Moderate|Weak|None>",
-        "PreclinicalSupport": "<Strong|Moderate|Weak|None>",
+      "DiagnosticBiomarker": {
+        "Availability": "<Yes|No>",
+        "Types": ["<types>"],
+        "Score": "<○|△|×>",
+        "References": [
+          "<citation1 with DOI/URL>",
+          "<citation2 with DOI/URL>",
+          "<citation3 with DOI/URL>"
+        ]
+      },
+      "ClinicalBiomarkerScore": {
+        "Exists": "<Yes|No>",
+        "Examples": ["<examples>"],
         "Score": "<○|△|×>",
         "ClassificationSummary": {
-          "PositiveCount": 0,
-          "HypotheticalCount": 0,
-          "NegativeCount": 0
+          "PositiveCount": <int>,
+          "HypotheticalCount": <int>,
+          "NegativeCount": <int>
         },
-        "Rationale": "<reasoning based on how robustly the target is linked to disease onset/progression>",
+        "Rationale": "<reasoning based on evidence>",
         "References": [
           {
             "Citation": "<citation1>",
             "Classification": "<Positive|Hypothetical|Negative>",
-            "ClassificationRationale": "<e.g., strong human genetic association, causal evidence, etc.>"
+            "ClassificationRationale": "<why this classification was chosen>"
           },
           {
             "Citation": "<citation2>",
             "Classification": "<Positive|Hypothetical|Negative>",
-            "ClassificationRationale": "<e.g., supportive preclinical or mechanistic data>"
+            "ClassificationRationale": "<why this classification was chosen>"
           },
           {
             "Citation": "<citation3>",
             "Classification": "<Positive|Hypothetical|Negative>",
-            "ClassificationRationale": "<e.g., conflicting or limited data affecting confidence>"
+            "ClassificationRationale": "<why this classification was chosen>"
           }
         ],
         "Discrepancy": "<Yes|No>",
         "DiscrepancyNotes": [
-          "Explain differences among Ref1, Ref2, Ref3 regarding target–disease causal linkage"
+          "Explain differences among Ref1, Ref2, Ref3"
         ]
       },
-
-      "BiomarkerStrategyAlignment": {
-        "HasTargetEngagementBiomarker": "<Yes|No>",
-        "HasPharmacodynamicBiomarker": "<Yes|No>",
-        "HasResponseOrPrognosticBiomarker": "<Yes|No>",
-        "BiomarkerTypes": [
-          "<soluble protein>",
-          "<imaging>",
-          "<genomic>",
-          "<metabolomic>",
-          "<functional/clinical>"
-        ],
-        "OperationalFeasibility": "<High|Moderate|Low>",
+      "TargetEngagementBiomarkerScore": {
+        "Exists": "<Yes|No>",
         "Score": "<○|△|×>",
         "ClassificationSummary": {
-          "PositiveCount": 0,
-          "HypotheticalCount": 0,
-          "NegativeCount": 0
+          "PositiveCount": <int>,
+          "HypotheticalCount": <int>,
+          "NegativeCount": <int>
         },
-        "Rationale": "<reasoning based on coherence between biomarker plan, MoA, and disease biology, and feasibility in trials>",
+        "Rationale": "<reasoning based on evidence>",
         "References": [
           {
             "Citation": "<citation1>",
             "Classification": "<Positive|Hypothetical|Negative>",
-            "ClassificationRationale": "<e.g., well-validated TE/PD biomarkers in humans or strong preclinical validation>"
+            "ClassificationRationale": "<why this classification was chosen>"
           },
           {
             "Citation": "<citation2>",
             "Classification": "<Positive|Hypothetical|Negative>",
-            "ClassificationRationale": "<e.g., exploratory or partially validated biomarkers>"
+            "ClassificationRationale": "<why this classification was chosen>"
           },
           {
             "Citation": "<citation3>",
             "Classification": "<Positive|Hypothetical|Negative>",
-            "ClassificationRationale": "<e.g., lack of biomarker data or negative findings>"
+            "ClassificationRationale": "<why this classification was chosen>"
           }
         ],
         "Discrepancy": "<Yes|No>",
         "DiscrepancyNotes": [
-          "Explain differences among Ref1, Ref2, Ref3 regarding biomarker robustness and alignment"
+          "Explain differences among Ref1, Ref2, Ref3"
         ]
       },
-
-      "ClinicalProofOfConceptPotential": {
-        "HasOngoingOrPlannedClinicalTrial": "<Yes|No>",
-        "CurrentOrPlannedPhase": "<Phase 1 | Phase 1/2 | Phase 2 | etc.>",
-        "KeyEndpoints": [
-          "<primary endpoint>",
-          "<secondary endpoint>"
-        ],
-        "PatientPopulationDefinition": "<inclusion/exclusion summary>",
-        "TrialDesignType": "<randomized | single-arm | adaptive | basket | etc.>",
+      "PathophysiologyClarity": {
         "Score": "<○|△|×>",
         "ClassificationSummary": {
-          "PositiveCount": 0,
-          "HypotheticalCount": 0,
-          "NegativeCount": 0
+          "PositiveCount": <int>,
+          "HypotheticalCount": <int>,
+          "NegativeCount": <int>
         },
-        "Rationale": "<reasoning based on whether the design is capable of detecting a meaningful signal and informing go/no-go>",
+        "Rationale": "<reasoning based on evidence>",
         "References": [
           {
-            "Citation": "<citation1 – protocol, registry entry, or publication>",
+            "Citation": "<citation1>",
             "Classification": "<Positive|Hypothetical|Negative>",
-            "ClassificationRationale": "<e.g., robust endpoints and design supporting clear PoC readout>"
+            "ClassificationRationale": "<why this classification was chosen>"
           },
           {
             "Citation": "<citation2>",
             "Classification": "<Positive|Hypothetical|Negative>",
-            "ClassificationRationale": "<e.g., supportive but limited design or early data>"
+            "ClassificationRationale": "<why this classification was chosen>"
           },
           {
             "Citation": "<citation3>",
             "Classification": "<Positive|Hypothetical|Negative>",
-            "ClassificationRationale": "<e.g., underpowered design or endpoints with high uncertainty>"
+            "ClassificationRationale": "<why this classification was chosen>"
           }
         ],
         "Discrepancy": "<Yes|No>",
         "DiscrepancyNotes": [
-          "Explain differences among Ref1, Ref2, Ref3 regarding PoC design strength and likelihood of signal detection"
+          "Explain differences among Ref1, Ref2, Ref3"
         ]
       },
-
-      "SafetyPredictability": {
-        "HasHumanSafetyData": "<Yes|No>",
-        "PreclinicalToxCoverage": "<Complete|Partial|Limited>",
-        "ClassEffectKnowledge": "<WellCharacterized|Emerging|Unknown>",
-        "KeySafetyConcerns": [
-          "<on-target toxicity>",
-          "<off-target toxicity>",
-          "<immunogenicity>",
-          "<infusion reactions>"
-        ],
+      "TargetEngagementPotential": {
+        "KnownTargets": ["<targets>"],
         "Score": "<○|△|×>",
         "ClassificationSummary": {
-          "PositiveCount": 0,
-          "HypotheticalCount": 0,
-          "NegativeCount": 0
+          "PositiveCount": <int>,
+          "HypotheticalCount": <int>,
+          "NegativeCount": <int>
         },
-        "Rationale": "<reasoning based on how well the safety profile can be anticipated and managed in humans>",
+        "Rationale": "<reasoning based on evidence>",
         "References": [
           {
-            "Citation": "<citation1 – preclinical tox or first-in-human data>",
+            "Citation": "<citation1>",
             "Classification": "<Positive|Hypothetical|Negative>",
-            "ClassificationRationale": "<e.g., predictable and manageable safety profile consistent with MoA>"
+            "ClassificationRationale": "<why this classification was chosen>"
           },
           {
             "Citation": "<citation2>",
             "Classification": "<Positive|Hypothetical|Negative>",
-            "ClassificationRationale": "<e.g., partial or emerging safety data>"
+            "ClassificationRationale": "<why this classification was chosen>"
           },
           {
             "Citation": "<citation3>",
             "Classification": "<Positive|Hypothetical|Negative>",
-            "ClassificationRationale": "<e.g., unexpected toxicities or unclear risk profile>"
+            "ClassificationRationale": "<why this classification was chosen>"
           }
         ],
         "Discrepancy": "<Yes|No>",
         "DiscrepancyNotes": [
-          "Explain differences among Ref1, Ref2, Ref3 regarding predictability and severity of safety findings"
-        ]
-      },
-
-      "DevelopmentFeasibility": {
-        "RecruitmentFeasibility": "<High|Moderate|Low>",
-        "EstimatedEligiblePopulation": "<numeric or qualitative estimate>",
-        "TrialOperationalComplexity": "<High|Moderate|Low>",
-        "BiomarkerOrProcedureBurden": "<High|Moderate|Low>",
-        "RegulatoryPathwayComplexity": "<High|Moderate|Low>",
-        "Score": "<○|△|×>",
-        "ClassificationSummary": {
-          "PositiveCount": 0,
-          "HypotheticalCount": 0,
-          "NegativeCount": 0
-        },
-        "Rationale": "<reasoning based on practical feasibility of executing trials in this indication with this asset or other assests that are more advanced in clinical stages that can reference>",
-        "References": [
-          {
-            "Citation": "<citation1 – prior trials in this indication or similar setting>",
-            "Classification": "<Positive|Hypothetical|Negative>",
-            "ClassificationRationale": "<e.g., demonstrated feasible recruitment and execution>"
-          },
-          {
-            "Citation": "<citation2>",
-            "Classification": "<Positive|Hypothetical|Negative>",
-            "ClassificationRationale": "<e.g., mixed feasibility experience or logistical challenges>"
-          },
-          {
-            "Citation": "<citation3>",
-            "Classification": "<Positive|Hypothetical|Negative>",
-            "ClassificationRationale": "<e.g., major feasibility concerns or failed studies>"
-          }
-        ],
-        "Discrepancy": "<Yes|No>",
-        "DiscrepancyNotes": [
-          "Explain differences among Ref1, Ref2, Ref3 regarding recruitment, logistics, and regulatory feasibility"
+          "Explain differences among Ref1, Ref2, Ref3"
         ]
       }
     },
-
     "TotalScore": {
-      "value": 0,
+      "value": <int>,
       "unit": "points",
-      "Note": "Sum of six asset-level criteria (○=2, △=1, ×=0). AssetClassification is scored but not included in this total unless explicitly specified."
+      "Note": "Sum of seven criteria (○=2, △=1, ×=0)"
     }
   }
 }
+
+
+
+IMPORTANT: You MUST output in JSON ONLY but contained by a **plaintext code block** as exampled below:
+
+ ```plaintext
+ { "example": 123 }
+
+ ```
